@@ -1,0 +1,1999 @@
+
+
+    $(document).ready(function(){
+    /*  var d= new Date();
+        var dia	=("00"+(d.getDate())).slice(-2)    // d.getDate();
+        var mes	=("00"+(d.getMonth()+1)).slice(-2)
+        var ano	=d.getFullYear();
+        var hh	=("00"+(d.getHours())).slice(-2)	  //(d.getHours());
+        var mm	=("00"+(d.getMinutes())).slice(-2)   //d.getMinutes();
+        var ss	=("00"+(d.getSeconds())).slice(-2)  // d.getSeconds();
+        $('.teste').val(ano+'-'+mes+'-'+dia+' '+hh+':'+mm+':'+ss);
+        setTimeout(datahorario,1000);
+        */
+       //$('.datepicker').datepicker();
+       $(".datepicker").datepicker({
+        format: "yyyy-mm-d",
+        locale: 'br',
+        autoclose:true
+        
+    });
+        webServices('pages/script_bsc_cartao/jsonComboAno.php',1,'#ano','');
+
+        numeral.register('locale','pt-br', {
+            delimiters: {
+                thousands: '.',
+                decimal: ','
+            },
+            abbreviations: {
+                thousand: 'mil',
+                million: 'milhões',
+                billion: 'b',
+                trillion: 't'
+            },
+            ordinal : function (number) {
+                return 'º';
+            },
+            currency: {
+                symbol: 'R$'
+            }
+        });
+        $('[data-toggle="tooltip"]').tooltip()
+        $('#element').tooltip('toggle')
+        
+    });
+      
+    function mesLiteral(valor){
+        var mes=[] ;
+        mes=["Null","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        return mes[valor];
+    }
+      
+    //FUNCAO RESPONSAVEL POR UM DELAY 
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function validaLinhaTotal(value,num){
+        var linhaTotal=''
+
+        if(value=="TOTAL DE VENDAS: "){
+            linhaTotal='background-color:#8B8989;color:#FFFFFF;'
+         }
+         if(num%2==0) {
+             linhaTotal='background-color:#C1CDCD;'
+        }else{
+            linhaTotal='';
+         }
+
+         return linhaTotal;        
+    }
+      
+    function formatNumber(num){
+        return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.')
+    }
+       
+    function segundoHora(tipo,segundos){
+        
+        numeral.locale('pt-br');
+
+        switch (tipo) {
+            case 1:
+                hora = duas_casas(Math.floor(segundos / 3600));
+                minuto = duas_casas(Math.floor((segundos % 3600) / 60));
+                segundo = duas_casas(segundos % 60);    
+                formatado = hora + ":" + minuto + ":" + segundo;
+                break;
+            case 2:
+                minuto = duas_casas(Math.floor((segundos%3600)/60));
+                segundo = duas_casas((segundos%3600)%60);  
+                formatado = minuto + ":" + segundo;
+                break;
+            case 3:
+                formatado = parseFloat(segundos).toFixed(0) +'%';
+                formatado = formatado.replace('.',',');
+                break;
+            case 4:
+                formatado = parseFloat(segundos).toFixed(2) + '%';
+                formatado = formatado.replace('.',',');
+                break;
+            case 5:
+            
+                formatado = numeral(segundos).format('0,00');
+                break;
+                case 6:
+                        formatado = segundos?parseFloat(segundos).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}):'R$0,00';
+
+                break;
+
+        
+            default:
+                formatado = parseFloat(segundos).toFixed(2);
+            break;
+        }
+
+        function duas_casas(numero){
+            if (numero <= 9){
+                numero = "0"+ numero;
+            }
+            return numero;
+        }
+
+        return formatado;
+    }
+      // MENSAGEM AMIGAVEL PARA O USUARIO
+    function sweetAlert(titulo,mensagem,alerta){ 
+        swal.fire({
+            icon:alerta,
+            width: 450,
+            title: titulo,
+            text: mensagem,
+            showConfirmButton: true,
+            timer:4000,
+            footer: '2018 - 2020 © Porto Seguro Mis Atendimento.'
+        });
+    }
+    // LOADING DE ESPERA PARA CARREGAR OS GRAFICOS
+    function loading(acao){
+        if (acao) {
+            swal.fire({
+                width: 400,
+                //timer:3000,
+                allowEscapeKey: false,
+                allowOutsideClick: false,
+                padding: '3em',
+                title: 'Aguarde, carregando!!!',
+                background: '#EEE9E9',
+                onOpen: () => {
+                    swal.showLoading(function(){  
+                    });
+                },
+               backdrop: `rgba(0,0,0,0.85)`
+            });
+            
+        } else {
+            swal.close(); 
+        }
+    }
+
+    function addArrowIndicador(meta,atingido,percent){
+        let resultado='';
+            if(parseInt(atingido) > parseInt(meta) && parseInt(atingido)>0 && parseInt(meta)>0){
+                resultado='<div class="form-inline text-success text-bold" style="width:100%;"><i class="fas fa-long-arrow-alt-up text-success"></i> '+(parseInt(atingido)/parseInt(meta)*100).toFixed(1)+'%</div>'
+    
+            }else if(parseInt(atingido) == parseInt(meta) && parseInt(atingido)>0 && parseInt(meta)>0){
+                resultado='<div class="form-inline text-warning text-bold" style="width:100%;"><i class="fas fa-minus text-warning"></i> '+(parseInt(atingido)/parseInt(meta)*100).toFixed(1)+'%</div>'
+    
+            }else if( parseInt(atingido) < parseInt(meta) && parseInt(atingido)>0 && parseInt(meta)>0){
+                resultado='<div class="form-inline text-danger text-bold" style="width:100%;"><i class="fas fa-long-arrow-alt-down text-danger"></i> '+(parseInt(atingido)/parseInt(meta)*100).toFixed(1)+'%</div>'
+            }else{
+                resultado='<div class="form-inline text-warning text-bold" style="width:100%;"><i class="fas fa-minus text-warning"></i> 0%</div>'
+            }
+        return resultado;	
+    }
+
+    function validaLinhaAtingimento(tipo,vendas,meta){
+        var resultado=''
+        if(tipo==1){
+            if(parseInt(vendas)==parseInt(meta) || parseInt(meta)<1 && parseInt(vendas)>0){
+                resultado='<span class="pull-right"><i class="fas fa-minus" style="color:#f09d1f "></i></span>'
+            }else if(parseInt(vendas)>parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-arrow-up" style="color:#46a166 "></i></span>'
+            }else if(parseInt(vendas)<parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-arrow-down" style="color:#e34525"></i></span>'
+            }
+    
+        }else if(tipo==2){
+            if(parseInt(vendas)==parseInt(meta) ||  parseInt(meta)<1 && parseInt(vendas)>0){
+                resultado='<span class="pull-right"><i class="fas fa-minus" style="color:#f09d1f "></i></span>'
+            }else if(parseInt(vendas)>parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-plus" style="color:#46a166 "></i></span>'
+            }else if(parseInt(vendas)<parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-minus" style="color:#e34525"></i></span>'
+            }
+        }else if(tipo==3){
+            if(parseInt(vendas)==parseInt(meta) ||  parseInt(meta)<1 && parseInt(vendas)>0){
+                resultado='<span class="pull-right"><i class="fas fa-minus" style="color:#f09d1f "></i></span>'
+            }else if(parseInt(vendas)<parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-plus" style="color:#46a166 "></i></span>'
+            }else if(parseInt(vendas)>parseInt(meta)){
+                resultado='<span class="pull-right"><i class="fas fa-minus" style="color:#e34525"></i></span>'
+            }
+        }
+       
+        
+        return resultado;
+    }
+
+    function validaMetaVendas(tipo,vendas,meta){
+        let icone=''
+        switch(tipo){
+            case 1: 
+                if(vendas>meta){
+                    icone= "circle" 
+                }else{
+                    icone= "cross" 
+                }
+            break;
+            case 2:
+                if(vendas>=meta){
+                    icone= "#6B8E23" 
+                }else{
+                    icone= "tomato" 
+                }
+            break;
+            default:
+                    icone= "none"
+        }
+        
+        return icone;
+    }
+
+    function webServices(url,tipo,idElement,ano,mes,operacao,coordenador,supervisor,agente,parametro,periodo){
+        $.ajax({
+            url:url,
+            type:"POST",
+            dataType:"JSON",
+            data:{'tipo':tipo,'idElement':idElement,'ano':ano,'mes':mes,'operacao':operacao,'coordenador':coordenador,'supervisor':supervisor,'agente':agente,'parametro':parametro,'periodo':periodo},
+            async:true,
+            cache:false,
+            beforeSend:function(){
+                setTimeout(function(){
+                    loading(true)
+                },1000) 
+            },
+            success:function(result){
+                setTimeout(function(){
+                    loading(true)
+                },1000) 
+                regraNegocio(tipo,idElement,result);
+            },
+            complete:function(e){
+               // loading(true)
+                console.log("Status "+e.status + " Url: " +url)
+                if( e.status !=200){
+                    sweetAlert("Tente executar novamente. Caso o problema persista,contacte o MIS!!!");
+                }else{
+                            setTimeout(function(){
+                                loading(false)
+                            },3000)                    
+                }
+            },
+            error:function(e){
+                sweetAlert("Tente executar novamente. Caso o problema persista,contacte o MIS!!!");
+                console.log("Status Response :"+ e.status+ " Erro ao consumir: " + url);
+            }
+        })
+
+    }
+
+    async function regraNegocio(tipo,idElement,result){ 
+        delay(1000);
+        var option='';
+        ultimaAtualizacao();
+        switch(tipo){
+            case 1: 
+                result.forEach(function(v,i){
+                    option+='<option value='+v.ano+'>'+v.ano+'</option>'
+                })
+                $(idElement).html(option);
+                webServices('pages/script_bsc_cartao/jsonComboMes.php',2,'#mes',$('#ano').val());
+            break;
+            case 2: 
+                result.forEach(function(v,i){
+                    option+='<option value='+v.mes+'>'+v.mes_txt+'</option>'
+                })
+                $(idElement).html(option);
+                webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,1,$('#ano').val(),$('#mes').val());
+                webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',8,1,'','','','','','','');
+                webServices('pages/script_bsc_cartao/jsonComboOperacao.php',3,'#operacao',$('#ano').val(),$('#mes').val());
+            
+            break;
+            case 3:
+                option+='<option value="">Selecione</option>'
+                result.forEach(function(v,i){
+                    option+='<option value='+v.id_ug+'>'+v.operacao+'</option>'
+                })
+                $(idElement).html(option);
+                $('#operacao_d').html(option);
+                webServices('pages/script_bsc_cartao/jsonComboCoordenador.php',4,'#coordenador',$('#ano').val(),$('#mes').val());
+            break;
+            case 4:
+                option+='<option value="">Selecione</option>'
+                result.forEach(function(v,i){
+                    option+='<option>'+v.coordenador+'</option>'
+                })
+                $(idElement).html(option);
+                $('#coordenador_d').html(option);
+                webServices('pages/script_bsc_cartao/jsonComboSupervisor.php',5,'#supervisor',$('#ano').val(),$('#mes').val());
+            break;
+            case 5:
+                option+='<option value="">Selecione</option>'
+                result.forEach(function(v,i){
+                    option+='<option>'+v.supervisor+'</option>'
+                })
+                $(idElement).html(option);
+                $('#supervisor_d').html(option);
+            break;
+            case 6:
+                option+='<option value="">Selecione</option>'
+                result.forEach(function(v,i){
+                    option+='<option value='+v.funcional+'>'+v.colaborador+'</option>'
+                })
+                $(idElement).html(option);
+        
+            break;
+            case 7:
+                $('#tabelaVisaoMensalBsc').html(tabelaBscMensal(tipo,result))
+                console.log(result)
+
+                carrega_dataTable(tipo,'#tabelaBscMensal')
+
+                    $('tr[id="agMes"]').click(function(){
+                    var dados_mes=($(this).attr('data-id')).split(';');
+                    $("#tabelaBscMesDetalhe").dataTable().fnClearTable();
+                    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',9,2,dados_mes[0],$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'',dados_mes[1]);
+                    })
+            break;
+            case 8:
+                    $('#tabelaVisaoDiaBsc').html(tabelaBscDia(tipo,result))
+                    carrega_dataTable(tipo,'#tabelaBscDia')
+
+                    $('tr[id="agDia"]').click(function(){
+                    var dados_dia=($(this).attr('data-id')).split(';');
+                    $("#tabelaBscDiaDetalhe").dataTable().fnClearTable();
+                    webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',10,2,'','','','','','',dados_dia[1],dados_dia[0]);
+                    })
+            break;
+            case 9:
+                    $('#tabelaVisaoMesDetalheBsc').html(tabelaBscMensalDetalhe(tipo,result))
+                    carrega_dataTable(tipo,'#tabelaBscMesDetalhe')
+            break;
+            case 10:
+                    $('#tabelaVisaoDiaDetalheBsc').html(tabelaBscDiaDetalhe(tipo,result))
+                    carrega_dataTable(tipo,'#tabelaBscDiaDetalhe')
+            break;
+
+
+            
+            
+        }
+    }
+
+function ultimaAtualizacao(){
+            $.post("pages/script_bsc_cartao/atualizacaoBsc.php",function(retorno){
+                $('#atualizacao').html(JSON.parse(retorno)[0].periodo)
+            })		
+}
+
+validaBh=(bh)=>{
+    let colorBh=''
+    if(bh.substring(0,1)=='-'){
+        colorBh='color:#e34525;font-weight:bold;';
+
+        //console.log(colorBh)
+    }else{
+        colorBh='color:#46a166;font-weight:bold;';
+        //console.log(colorBh)
+    }
+return colorBh;
+}
+
+
+ 
+
+function tabelaBscMensal(tipo,result){
+    var table='';
+    var tbody='';
+result.forEach(function(v,i){
+//console.log(v.banco_horas)
+    tbody+=
+            '<tr id="agMes" data-toggle="modal" data-target="#modalMesDetalhe"  class="fLine" class="text-center" data-id="'+v.ano+';'+v.matricula+'" data-order='+i+' style="'+validaLinhaTotal(v.mes_txt,i)+' cursor:pointer;">'
+                +'<td>'+v.ano+'</td>'
+                +'<td>'+v.mes_txt+'</td>'
+                +'<td>'+v.matricula+'</td>'
+                +'<td>'+v.colaborador+'</td>'
+                +'<td>'+v.operacao+'</td>'
+                +'<td>'+v.tempo_logado_hr+'</td>'
+                +'<td>'+v.tempo_falado_hr+'</td>'
+                +'<td>'+v.pausa_total_hr+'</td>'
+                +'<td>'+formatNumber(v.atd_fone)+'</td>'
+                +'<td>'+formatNumber(v.atd_chat)+'</td>'
+                +'<td>'+formatNumber(v.atd_whats)+'</td>'
+                +'<td>'+formatNumber(v.tt_atd)+'</td>'
+                +'<td>'+formatNumber(v.meta_atd)+'</td>'
+                +'<td>'+segundoHora(4,v.perc_atd*100)+''+validaLinhaAtingimento(1,v.tt_atd,v.meta_atd)+'</td>'
+                +'<td>'+formatNumber(v.short_call_30s)+'</td>'
+                +'<td>'+segundoHora(4,v.aderencia_perc)+'</td>'
+                +'<td>'+segundoHora(4,v.abs_perc)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_fone))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_whats))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tma_chat))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.meta_tmo))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_geral))+'</td>'
+                +'<td>'+segundoHora(4,parseInt(v.tmo_perc_geral*100))+''+validaLinhaAtingimento(3,v.tmo_geral,v.meta_tmo)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.meta_vendas))+'</td>'
+                +'<td>'+formatNumber(v.tt_vendas)+'</td>'
+                +'<td>'+segundoHora(4,v.meta_vendas_perc)+''+validaLinhaAtingimento(1,v.tt_vendas,v.meta_vendas)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_oferta_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_argumento_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_whats_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_fone_top)+'</td>'
+                +'<td style='+validaBh(v.banco_horas)+'>'+v.banco_horas+'</td>'
+                +'<td>'+v.home_office+'</td>'
+           +'</tr>'
+    })
+
+    table=
+            '<table class="table text-center table-bordered  table-hover tabelaBscMensal"  id="tabelaBscMensal" style="width:100%" >'
+                +'<thead>'
+                    +'<tr>'
+                        +'<th>Ano</th>'
+                        +'<th>Mês</th>'
+                        +'<th>Matricula</th>'
+                        +'<th><div style="width:280px;">Agente</div></th>'
+                        +'<th><div style="width:270px;">Operação</div></th>'
+                        +'<th><div style="width:140px;">Tempo Logado</div></th>'
+                        +'<th><div style="width:140px;">Tempo Falado</div></th>'
+                        +'<th><div style="width:140px;">Pausa Total</div></th>'
+                        +'<th><div style="width:120px;">Atd Fone</div></th>'
+                        +'<th><div style="width:120px;">Atd Chat</div></th>'
+                        +'<th><div style="width:120px;">Atd Whats</div></th>'
+                        +'<th><div style="width:120px;">Total Atd</div></th>'
+                        +'<th><div style="width:120px;">Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">%Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">Short Call 30s</div></th>'
+                        +'<th><div style="width:120px;">%Aderência</div></th>'
+                        +'<th><div style="width:120px;">%Absenteismo</div></th>'
+                        +'<th><div style="width:120px;">TMO Fone</div></th>'
+                        +'<th><div style="width:120px;">TMO Whats</div></th>'
+                        +'<th><div style="width:120px;">TMA Chat</div></th>'
+                        +'<th><div style="width:120px;">Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">TMO</div></th>'
+                        +'<th><div style="width:120px;">%Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">Meta Vendas</div></th>'
+                        +'<th><div style="width:120px;">Total Vendas</div></th>'
+                        +'<th><div style="width:120px;">%Vendas</div></th>'
+                        +'<th><div style="width:140px;">%Retenção</div></th>'
+                        +'<th><div style="width:170px;">%Incentivo Financeiro</div></th>'
+                        +'<th><div style="width:160px;">%Retenção Argumento</div></th>'
+                        +'<th><div style="width:140px;">%Pesquisa Top-Chat</div></th>'
+                        +'<th><div style="width:150px;">%Pesquisa Top-Whats</div></th>'
+                        +'<th><div style="width:160px;">%Pesquisa Csat-Fone</div></th>'
+                        +'<th><div style="width:160px;">Banco de Horas</div></th>'
+                        +'<th><div style="width:160px;">Home Office?</div></th>'
+                    +'</tr>'
+                +'</thead>'
+                +'<tbody>'+tbody+'</tbody>'
+            +'</table>'
+        ;
+            
+            return table
+            
+}	
+
+function tabelaBscMensalDetalhe(tipo,result){
+    var table='';
+    var tbody='';
+result.forEach(function(v,i){
+
+    tbody+=
+            '<tr id="agMes"   class="fLine" class="text-center" data-id="'+v.ano+';'+v.matricula+'" data-order='+i+' style="'+validaLinhaTotal(v.mes_txt,i)+';">'
+                +'<td>'+v.ano+'</td>'
+                +'<td>'+v.mes_txt+'</td>'
+                +'<td>'+v.matricula+'</td>'
+                +'<td>'+v.colaborador+'</td>'
+                +'<td>'+v.operacao+'</td>'
+                +'<td>'+v.tempo_logado_hr+'</td>'
+                +'<td>'+v.tempo_falado_hr+'</td>'
+                +'<td>'+v.pausa_total_hr+'</td>'
+                +'<td>'+formatNumber(v.atd_fone)+'</td>'
+                +'<td>'+formatNumber(v.atd_chat)+'</td>'
+                +'<td>'+formatNumber(v.atd_whats)+'</td>'
+                +'<td>'+formatNumber(v.tt_atd)+'</td>'
+                +'<td>'+formatNumber(v.meta_atd)+'</td>'
+                +'<td>'+segundoHora(4,v.perc_atd*100)+''+validaLinhaAtingimento(1,v.tt_atd,v.meta_atd)+'</td>'
+                +'<td>'+formatNumber(v.short_call_30s)+'</td>'
+                +'<td>'+segundoHora(4,v.aderencia_perc)+'</td>'
+                +'<td>'+segundoHora(4,v.abs_perc)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_fone))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_whats))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tma_chat))+'</td>'
+
+                +'<td>'+formatNumber(parseInt(v.meta_tmo))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_geral))+'</td>'
+                +'<td>'+segundoHora(4,parseInt(v.tmo_perc_geral*100))+''+validaLinhaAtingimento(3,v.tmo_geral,v.meta_tmo)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.meta_vendas))+'</td>'
+                +'<td>'+formatNumber(v.tt_vendas)+'</td>'
+                +'<td>'+segundoHora(4,v.meta_vendas_perc)+''+validaLinhaAtingimento(1,v.tt_vendas,v.meta_vendas)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_oferta_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_argumento_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_whats_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_fone_top)+'</td>'
+                +'<td style='+validaBh(v.banco_horas)+'>'+v.banco_horas+'</td>'
+                +'<td>'+v.home_office+'</td>'
+           +'</tr>'
+    })
+
+    table=
+            '<table class="table text-center table-bordered  table-hover tabelaBscMesDetalhe"  id="tabelaBscMesDetalhe" style="width:100%" >'
+                +'<thead>'
+                    +'<tr>'
+                        +'<th>Ano</th>'
+                        +'<th>Mês</th>'
+                        +'<th>Matricula</th>'
+                        +'<th><div style="width:280px;">Agente</div></th>'
+                        +'<th><div style="width:270px;">Operação</div></th>'
+                        +'<th><div style="width:140px;">Tempo Logado</div></th>'
+                        +'<th><div style="width:140px;">Tempo Falado</div></th>'
+                        +'<th><div style="width:140px;">Pausa Total</div></th>'
+                        +'<th><div style="width:120px;">Atd Fone</div></th>'
+                        +'<th><div style="width:120px;">Atd Chat</div></th>'
+                        +'<th><div style="width:120px;">Atd Whats</div></th>'
+                        +'<th><div style="width:120px;">Total Atd</div></th>'
+                        +'<th><div style="width:120px;">Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">%Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">Short Call 30s</div></th>'
+                        +'<th><div style="width:120px;">%Aderência</div></th>'
+                        +'<th><div style="width:120px;">%Absenteismo</div></th>'
+                        +'<th><div style="width:120px;">TMO Fone</div></th>'
+                        +'<th><div style="width:120px;">TMO Whats</div></th>'
+                        +'<th><div style="width:120px;">TMA Chat</div></th>'
+                        +'<th><div style="width:120px;">Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">TMO</div></th>'
+                        +'<th><div style="width:120px;">%Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">Meta Vendas</div></th>'
+                        +'<th><div style="width:120px;">Total Vendas</div></th>'
+                        +'<th><div style="width:120px;">%Vendas</div></th>'
+                        +'<th><div style="width:140px;">%Retenção</div></th>'
+                        +'<th><div style="width:170px;">%Incentivo Financeiro</div></th>'
+                        +'<th><div style="width:160px;">%Retenção Argumento</div></th>'
+                        +'<th><div style="width:140px;">%Pesquisa Top-Chat</div></th>'
+                        +'<th><div style="width:150px;">%Pesquisa Top-Whats</div></th>'
+                        +'<th><div style="width:160px;">%Pesquisa Csat-Fone</div></th>'
+                        +'<th><div style="width:160px;">Banco de Horas</div></th>'
+                        +'<th><div style="width:160px;">Home Office?</div></th>'
+                    +'</tr>'
+                +'</thead>'
+                +'<tbody>'+tbody+'</tbody>'
+            +'</table>'
+        ;
+            
+            return table
+            
+}	
+
+function tabelaBscDia(tipo,result){
+    var table='';
+    var tbody='';
+result.forEach(function(v,i){
+    tbody+=
+            '<tr id="agDia" data-toggle="modal" data-target="#modalDiaDetalhe"  class="fLine" class="text-center" data-id="'+v.dt_periodo+';'+v.matricula+'" data-order='+i+' style="'+validaLinhaTotal(v.mes_txt,i)+' cursor:pointer;">'
+                +'<td>'+v.dt_periodo+'</td>'
+                +'<td>'+v.matricula+'</td>'
+                +'<td>'+v.colaborador+'</td>'
+                +'<td>'+v.operacao+'</td>'
+                +'<td>'+v.tempo_logado_hr+'</td>'
+                +'<td>'+v.tempo_falado_hr+'</td>'
+                +'<td>'+v.pausa_total_hr+'</td>'
+                +'<td>'+formatNumber(v.atd_fone)+'</td>'
+                +'<td>'+formatNumber(v.atd_chat)+'</td>'
+                +'<td>'+formatNumber(v.atd_whats)+'</td>'
+                +'<td>'+formatNumber(v.tt_atd)+'</td>'
+                +'<td>'+formatNumber(v.meta_atd)+'</td>'
+                +'<td>'+segundoHora(4,v.perc_atd*100)+''+validaLinhaAtingimento(1,v.tt_atd,v.meta_atd)+'</td>'
+                +'<td>'+formatNumber(v.short_call_30s)+'</td>'
+                +'<td>'+segundoHora(4,v.aderencia_perc)+'</td>'
+                +'<td>'+segundoHora(4,v.abs_perc)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_fone))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_whats))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tma_chat))+'</td>'
+                //+'<td>'+formatNumber(parseInt(v.meta_tmo))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_geral))+'</td>'
+                //+'<td>'+segundoHora(4,parseInt(v.tmo_perc_geral*100))+''+validaLinhaAtingimento(3,v.tmo_geral,v.meta_tmo)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.meta_vendas))+'</td>'
+                +'<td>'+formatNumber(v.tt_vendas)+'</td>'
+                +'<td>'+segundoHora(4,v.meta_vendas_perc)+''+validaLinhaAtingimento(1,v.tt_vendas,v.meta_vendas)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_oferta_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_argumento_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_whats_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_fone_top)+'</td>'               
+                +'<td style='+validaBh(v.banco_horas)+'>'+v.banco_horas+'</td>'
+                +'<td>'+v.home_office+'</td>'
+               
+           +'</tr>'
+    })
+
+    table=
+            '<table class="table text-center table-bordered  table-hover tabelaBscDia"  id="tabelaBscDia" style="width:100%" >'
+                +'<thead>'
+                    +'<tr>'
+                        +'<th>Periodo</th>'
+                        +'<th>Matricula</th>'
+                        +'<th><div style="width:280px;">Agente</div></th>'
+                        +'<th><div style="width:270px;">Operação</div></th>'
+                        +'<th><div style="width:140px;">Tempo Logado</div></th>'
+                        +'<th><div style="width:140px;">Tempo Falado</div></th>'
+                        +'<th><div style="width:140px;">Pausa Total</div></th>'
+                        +'<th><div style="width:120px;">Atd Fone</div></th>'
+                        +'<th><div style="width:120px;">Atd Chat</div></th>'
+                        +'<th><div style="width:120px;">Atd Whats</div></th>'
+                        +'<th><div style="width:120px;">Total Atd</div></th>'
+                        +'<th><div style="width:120px;">Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">%Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">Short Call 30s</div></th>'
+                        +'<th><div style="width:120px;">%Aderência</div></th>'
+                        +'<th><div style="width:120px;">%Absenteismo</div></th>'
+                        +'<th><div style="width:120px;">TMO Fone</div></th>'
+                        +'<th><div style="width:120px;">TMO Whats</div></th>'
+                        +'<th><div style="width:120px;">TMA Chat</div></th>'
+                       // +'<th><div style="width:120px;">Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">TMO</div></th>'
+                       // +'<th><div style="width:120px;">%Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">Meta Vendas</div></th>'
+                        +'<th><div style="width:120px;">Total Vendas</div></th>'
+                        +'<th><div style="width:120px;">%Vendas</div></th>'
+                        +'<th><div style="width:140px;">%Retenção</div></th>'
+                        +'<th><div style="width:170px;">%Incentivo Financeiro</div></th>'
+                        +'<th><div style="width:160px;">%Retenção Argumento</div></th>'
+                        +'<th><div style="width:140px;">%Pesquisa Top-Chat</div></th>'
+                        +'<th><div style="width:150px;">%Pesquisa Top-Whats</div></th>'
+                        +'<th><div style="width:160px;">%Pesquisa Csat-Fone</div></th>'
+                        +'<th><div style="width:160px;">Banco de Horas</div></th>'
+                        +'<th><div style="width:160px;">Home Office?</div></th>'
+                    +'</tr>'
+                +'</thead>'
+                +'<tbody>'+tbody+'</tbody>'
+            +'</table>'
+        ;
+            
+            return table
+            
+}	
+
+function tabelaBscDiaDetalhe(tipo,result){
+    var table='';
+    var tbody='';
+result.forEach(function(v,i){
+    var date=v.dt_periodo.split('-');
+    tbody+=
+            '<tr id="agDia"  class="fLine" class="text-center" data-id="'+date[0]+';'+date[1]+';'+v.matricula+'" data-order='+i+' style="'+validaLinhaTotal(v.mes_txt,i)+'">'
+                +'<td>'+v.dt_periodo+'</td>'
+                +'<td>'+v.matricula+'</td>'
+                +'<td>'+v.colaborador+'</td>'
+                +'<td>'+v.operacao+'</td>'
+                +'<td>'+v.tempo_logado_hr+'</td>'
+                +'<td>'+v.tempo_falado_hr+'</td>'
+                +'<td>'+v.pausa_total_hr+'</td>'
+                +'<td>'+formatNumber(v.atd_fone)+'</td>'
+                +'<td>'+formatNumber(v.atd_chat)+'</td>'
+                +'<td>'+formatNumber(v.atd_whats)+'</td>'
+                +'<td>'+formatNumber(v.tt_atd)+'</td>'
+                +'<td>'+formatNumber(v.meta_atd)+'</td>'
+                +'<td>'+segundoHora(4,v.perc_atd*100)+''+validaLinhaAtingimento(1,v.tt_atd,v.meta_atd)+'</td>'
+                +'<td>'+formatNumber(v.short_call_30s)+'</td>'
+                +'<td>'+segundoHora(4,v.aderencia_perc)+'</td>'
+                +'<td>'+segundoHora(4,v.abs_perc)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_fone))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_whats))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tma_chat))+'</td>'
+                //+'<td>'+formatNumber(parseInt(v.meta_tmo))+'</td>'
+                +'<td>'+formatNumber(parseInt(v.tmo_geral))+'</td>'
+                //+'<td>'+segundoHora(4,parseInt(v.tmo_perc_geral*100))+''+validaLinhaAtingimento(3,v.tmo_geral,v.meta_tmo)+'</td>'
+                +'<td>'+formatNumber(parseInt(v.meta_vendas))+'</td>'
+                +'<td>'+formatNumber(v.tt_vendas)+'</td>'
+                +'<td>'+segundoHora(4,v.meta_vendas_perc)+''+validaLinhaAtingimento(1,v.tt_vendas,v.meta_vendas)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_oferta_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.retencao_argumento_perc)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_whats_top)+'</td>'
+                +'<td>'+segundoHora(3,v.pesquisa_fone_top)+'</td>'
+                +'<td>'+v.banco_horas+'</td>'
+                +'<td style='+validaBh(v.banco_horas)+'>'+v.home_office+'</td>'
+           +'</tr>'
+    })
+
+    table=
+            '<table class="table text-center table-bordered  table-hover tabelaBscDiaDetalhe"  id="tabelaBscDiaDetalhe" style="width:100%" >'
+                +'<thead>'
+                    +'<tr>'
+                        +'<th>Periodo</th>'
+                        +'<th>Matricula</th>'
+                        +'<th><div style="width:280px;">Agente</div></th>'
+                        +'<th><div style="width:270px;">Operação</div></th>'
+                        +'<th><div style="width:140px;">Tempo Logado</div></th>'
+                        +'<th><div style="width:140px;">Tempo Falado</div></th>'
+                        +'<th><div style="width:140px;">Pausa Total</div></th>'
+                        +'<th><div style="width:120px;">Atd Fone</div></th>'
+                        +'<th><div style="width:120px;">Atd Chat</div></th>'
+                        +'<th><div style="width:120px;">Atd Whats</div></th>'
+                        +'<th><div style="width:120px;">Total Atd</div></th>'
+                        +'<th><div style="width:120px;">Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">%Meta Atd</div></th>'
+                        +'<th><div style="width:120px;">Short Call 30s</div></th>'
+                        +'<th><div style="width:120px;">%Aderência</div></th>'
+                        +'<th><div style="width:120px;">%Absenteismo</div></th>'
+                        +'<th><div style="width:120px;">TMO Fone</div></th>'
+                        +'<th><div style="width:120px;">TMO Whats</div></th>'
+                        +'<th><div style="width:120px;">TMA Chat</div></th>'
+                       // +'<th><div style="width:120px;">Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">TMO</div></th>'
+                       // +'<th><div style="width:120px;">%Meta TMO </div></th>'
+                        +'<th><div style="width:120px;">Meta Vendas</div></th>'
+                        +'<th><div style="width:120px;">Total Vendas</div></th>'
+                        +'<th><div style="width:120px;">%Vendas</div></th>'
+                        +'<th><div style="width:140px;">%Retenção</div></th>'
+                        +'<th><div style="width:170px;">%Incentivo Financeiro</div></th>'
+                        +'<th><div style="width:160px;">%Retenção Argumento</div></th>'
+                        +'<th><div style="width:140px;">%Pesquisa Top-Chat</div></th>'
+                        +'<th><div style="width:150px;">%Pesquisa Top-Whats</div></th>'
+                        +'<th><div style="width:160px;">%Pesquisa Csat-Fone</div></th>'
+                        +'<th><div style="width:160px;">Banco de Horas</div></th>'
+                        +'<th><div style="width:160px;">Home Office?</div></th>'
+                    +'</tr>'
+                +'</thead>'
+                +'<tbody>'+tbody+'</tbody>'
+            +'</table>'
+        ; 
+            return table
+}	
+
+function carrega_dataTable(tipo,tabela){
+    if ($.fn.DataTable.isDataTable(tabela))
+        {
+          //$(".tabelaAgenteProduto").dataTable().fnClearTable();	
+          $(tabela).dataTable().fnDestroy();
+        } 
+    $(tabela).dataTable({
+            fixedHeader: 			false,
+            colReorder: 			false,
+            responsive: 			false,
+            deferRender:    	    true,
+            scrollCollapse: 	    false,
+            ordering: 			    true,
+            //scrollY:        	'100%',
+            scrollX:        	true,
+            paging:         	true,
+            searching:      	true,
+            select:				false,
+        dom: 'Bfrtip',
+           buttons:
+           [
+               'excel','csv'
+           ],
+           language: 
+                {
+                  url: "//cdn.datatables.net/plug-ins/1.10.12/i18n/Portuguese-Brasil.json"
+                } 		
+    });		
+}	
+           
+
+function corQuartil(qt1)
+        {
+            var cor=""
+            
+            if(qt1=='1'){
+                cor="#3CB371"
+            }else if(qt1=='2'){
+                cor="#4682B4"	
+                
+            }else if(qt1=='3'){
+                cor="#FFA500"
+            }else if(qt1=='4'){
+                cor="#FF4500"		
+            }
+            
+            return cor
+            
+}
+
+/* Combos seleção agentes mensal*/
+$('#ano').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,'',$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'','','');
+})
+
+$('#mes').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,1,$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'','','');
+    webServices('pages/script_bsc_cartao/jsonComboOperacao.php',3,'#operacao',$('#ano').val(),$('#mes').val());
+})
+
+$('#operacao').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,1,$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'','','');
+    webServices('pages/script_bsc_cartao/jsonComboCoordenador.php',4,'#coordenador',$('#ano').val(),$('#mes').val(),$('#operacao').val());
+    
+})
+
+$('#coordenador').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,1,$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'','','');
+    webServices('pages/script_bsc_cartao/jsonComboSupervisor.php',5,'#supervisor',$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val());
+   
+})
+
+$('#supervisor').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoMesBsc.php',7,1,$('#ano').val(),$('#mes').val(),$('#operacao').val(),$('#coordenador').val(),$('#supervisor').val(),'','','');
+})
+
+/* Combos seleção agentes diario*/
+$('#datepicker').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',8,1,'','',$('#operacao_d').val(),$('#coordenador_d').val(),$('#supervisor_d').val(),'','',$('#datepicker').val());
+})
+
+$('#operacao_d').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',8,1,'','',$('#operacao_d').val(),$('#coordenador_d').val(),$('#supervisor_d').val(),'','',$('#datepicker').val());
+})
+
+$('#coordenador_d').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',8,1,'','',$('#operacao_d').val(),$('#coordenador_d').val(),$('#supervisor_d').val(),'','',$('#datepicker').val());
+})
+
+$('#supervisor_d').change(function(){
+    webServices('pages/script_bsc_cartao/jsonResultadoDiaBsc.php',8,1,'','',$('#operacao_d').val(),$('#coordenador_d').val(),$('#supervisor_d').val(),'','',$('#datepicker').val());
+})
+
+
+
+/*
+Esta pagina contem os scripts e
+modulos para carregamento dos 
+dados da pagina principal index.php
+
+*/
+
+$.widget.bridge('uibutton', $.ui.button);
+ function stringMes(mes_a){
+		var meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+		return meses 
+		}
+	
+ 
+
+/*function painel_principal(){
+ $.ajax({
+	  url:"pages/scripts_index/painel_principal.php",
+	  type:"POST",
+	  dataType:"html",
+	  success:function(retorno){
+		  $('#info_principal').html(retorno)
+		  
+	  },
+	  beforeSend:function(retorno){
+			$('#loading').removeClass('hide');
+	  },
+	  error:function(retorno){
+		  $('#info_principal').html('<div class="alert alert-danger">'+retorno+'</div>')
+	  }
+  })
+}*/
+
+
+ /* var json=function(){
+	var dataPoints1=new Object([]);
+	var dataPoints2=new Object([]);
+	var mes_a=new Object([]);
+	var ano_a=new Object([]);
+	var mes_b=new Object([]);
+	var ano_b=new Object([]);
+	var total_vendas_atual=[];
+	var total_vendas_anterior=[];
+	var dados;
+ $.ajax({
+	  url:"pages/scripts_index/grafico_vendas_mensal.php",
+	  type:"POST",
+	  dataType:"json",
+	  success:function(retorno){
+		  $('#graficosMes').html('<div class="chart tab-pane active compara_mes" id="compara_mes" style="position: relative; height: 300px;"></div>')
+		  //$('#loadGraficoMensal').addClass('hidden');
+		    for(i=0 ; i<retorno.length;i++){
+			  mes_a[i]=retorno[i].mes_a;
+			  ano_a[i]=retorno[i].ano_a;
+			  mes_b[i]=retorno[i].mes_b;
+			  ano_b[i]=retorno[i].ano_b;
+			  total_vendas_atual[i]=retorno[i].total_vendas_atual;
+			  total_vendas_anterior[i]=retorno[i].total_vendas_anterior;
+			  dataPoints1[i]=(parseInt(total_vendas_atual[i]));
+			  dataPoints2[i]=(parseInt(total_vendas_anterior[i]));
+			}
+			
+			
+			function graficoZingMensal(dataPoints1,dataPoints2,ano_a,ano_b){
+				//console.log(ano_a)
+				var chartData = {
+				  type: 'bar',
+				   "plot": {
+						"tooltip": {
+					"placement": "node:center" //"node:top", "node:bottom", "node:left", "node:right", and "node:center"
+						},
+						 "value-box": {
+							"text":"%v"
+						}
+				   },
+				  "title": {
+					 // Adds a title to your chart
+				  },
+				  "scale-x": {
+				  "labels": stringMes(mes_a)},
+				  "legend": {
+					   "layout":"1x2", //row x column
+						"x":"35%",
+						"y":"90%",
+				  }, 
+				  series: [  // Insert your series data here.
+					  { values: dataPoints1 ,"text":ano_a[0]},
+					  { values: dataPoints2,"text":ano_b[0]}
+				  ]
+				};
+				zingchart.render({ // Render Method[3]
+				  id: 'compara_mes',
+				  data: chartData,
+				 
+				height: "100%", 
+				width: "100%" 
+				});
+				return this
+			}
+			
+			
+			
+			
+			graficoZingMensal(dataPoints1,dataPoints2,ano_a,ano_b)
+		},
+	  beforeSend:function(retorno){
+		 $('#graficosMes').html('<div class="text-center" id="loadGraficoMensal" style="height:300px;position:relative;margin-top:20%"><img src="dist/img/load_spinner.gif" width="50" heigth="50" ></img></div>');
+	  },
+	  error:function(retorno){
+		  
+		  $('#info_principal').html('<div class="alert alert-danger">'+retorno+'</div>')
+	  }
+  })
+  return  this
+	
+  }*/
+
+
+
+
+
+/*var json_dia=function(){
+	var retorno=new Object([]);
+	var dia_a=new Object([]);
+	var dia_b=new Object([]);
+	var dataPoints1=new Object([]);
+	var dataPoints2=new Object([]);
+	var mes_a=new Object([]);
+	var str_mes_a=new Object([]);
+	var str_mes_b=new Object([]);
+	
+	var ano_a=new Object([]);
+	var mes_b=new Object([]);
+	var ano_b=new Object([]);
+	var total_vendas_atual=new Object([]);
+	var total_vendas_anterior=new Object([]);
+	var dados=new Object([]);
+ $.ajax({
+	  url:"pages/scripts_index/grafico_vendas_diario.php",
+	  type:"POST",
+	  dataType:"json",
+	  success:function(retorno){
+		$('#graficosDia').html(' <div class="chart tab-pane" id="compara_dia_mes" style="position: relative; height: 300px;"></div>');
+		for(i=0 ; i<retorno.length;i++){
+			  dia_a.push(retorno[i].dia_a);
+			  mes_a.push(retorno[i].mes_a);
+			  str_mes_a.push(retorno[i].str_mes_a);
+			  ano_a.push(retorno[i].ano_a);
+			  dia_b.push(retorno[i].dia_b);
+			  mes_b.push(retorno[i].mes_b);
+			  str_mes_b.push(retorno[i].str_mes_b);
+			  ano_b.push(retorno[i].ano_b);
+			  total_vendas_atual.push(retorno[i].total_vendas_atual);
+			  total_vendas_anterior.push(retorno[i].total_vendas_anterior);
+			  dataPoints1.push((parseInt(total_vendas_atual[i])));
+			  dataPoints2.push((parseInt(total_vendas_anterior[i])));
+			} 
+			graficoZingDiario(dia_a,mes_a,str_mes_a,ano_a,ano_b,dataPoints1,dataPoints2)
+			
+		},
+		
+		beforeSend:function(retorno){
+			
+			$('#graficosDia').html('<div class="text-center" id="loadGraficoMensal"  style="height:300px;position:relative;margin-top:50%"><img src="dist/img/load_spinner.gif" width="50" heigth="50" ></img></div>');
+			
+			
+		},
+		error:function(retorno){
+			
+			console.log("Erro "+retorno);
+			
+		}
+			
+	  });
+	
+	
+	
+}*/
+
+
+
+/*function graficoZingDiario(dia_a, mes_a,str_mes_a, ano_a, ano_b, dataPoints1, dataPoints2){
+var myConfig = {
+ 	type: 'line', 
+ 	title: {
+ 	  text: 'Comparativo Diário '+ str_mes_a[0]
+ 	},
+ 	subtitle: {
+ 	  //text: 'Click e arraste label vertically.'
+ 	},
+	
+ 	plot: {
+ 	  tooltip: {
+ 	    visible: false
+ 	  },
+	   /* "value-box": {
+				"text":"%v"
+		}, 
+ 	  cursor: 'hand'
+ 	},
+ 	crosshairX:{},
+ 	scaleX: {
+    markers: [],
+    offsetEnd:75,
+ 	  labels: dia_a
+ 	},
+	 "legend": {
+			   "layout":"1x2", //row x column
+				"x":"35%",
+				"y":"90%",
+			}, 
+	series: [
+		{values: dataPoints1,text: str_mes_a[0]+'/'+ano_a[0]},
+		{values: dataPoints2,text: str_mes_a[0]+'/'+ano_b[0]}
+	]
+};
+ 
+zingchart.render({ 
+	id: 'compara_dia_mes', 
+	data: myConfig, 
+	height: '100%', 
+	width: '100%' 
+});
+ 
+
+ * define Marker class to construct
+ * markers on the fly easier.
+ 
+function Marker(_index) {
+  return {
+    type: 'line',
+    lineColor: '#424242',
+    lineWidth: 1,
+    range: [_index],
+    flat: false,
+  }
+}
+ 
+
+ * define Label class to construct
+ * labels on the fly easier.
+ 
+function Label(_text, _id, _offsetX, _offsetY) {
+  return {
+      id: _id,
+      text: _text,
+      angle: 0,
+      padding:'5 10 5 10',
+      wrapText:true,
+      textAlign: 'left',
+      backgroundColor: '#eeeeee',
+      offsetX: _offsetX,
+      offsetY: _offsetY ? _offsetY : 0,
+      cursor: 'pointer',
+      flat: false,
+      fontStyle: 'bold',
+      fontSize: 13,
+    }
+}
+ 
+// format the label text
+
+/*function formatLabelText(_nodeindex, _scaleText) {
+  var plotInfo = null;
+  var nodeInfo;
+  var seriesText = '';
+  var labelString = isNaN(_scaleText) ? _scaleText + '<br>' : '';
+  var color = '';
+  var plotLength = zingchart.exec('compara_dia_mes', 'getplotlength', {
+      graphid : 0
+  });
+  
+  for (var i = 0; i < plotLength; i++) {
+    plotInfo = zingchart.exec('compara_dia_mes', 'getobjectinfo', {
+        object : 'plot',
+        plotindex : i
+    });
+    nodeInfo = zingchart.exec('compara_dia_mes', 'getobjectinfo', {
+        object : 'node',
+        plotindex : i,
+        nodeindex: _nodeindex
+    });
+    color = plotInfo.lineColor ? plotInfo.lineColor : plotInfo.backgroundColor1;
+    seriesText = plotInfo.text ? plotInfo.text : ('Series ' + (i+1));
+    labelString += '<span style="color:' + color + '">' + seriesText + ':</span>' +
+                   ' ' + nodeInfo.value + '<br>';
+  }
+  
+  return labelString;
+}
+ 
+// global array for markers since you can only update the whole array
+var markersArray = [];
+var labelsArray = [];
+ 
+// hash table for markers
+var markerHashTable = {};
+var labelsHashTable = {};
+ 
+
+ * Register a graph click event and then render a chart with the markers
+ 
+zingchart.bind('compara_dia_mes','click', function(e) {
+  var xyInformation;
+  var nodeIndex;
+  var scaleText;
+  var xPos;
+  var yPos;
+ 
+  // make sure not a node click and click happend in plotarea
+  if (e.target != "node" && e.plotarea) {
+    xyInformation = zingchart.exec('compara_dia_mes', 'getxyinfo', {
+      x: e.ev.clientX,
+      y: e.ev.clientY
+    });
+    
+    // if anything is found, 0 corresponds to scale-x
+    if (xyInformation && xyInformation[0] && xyInformation[2]) {
+      nodeIndex = xyInformation[0].scalepos;
+      scaleText = xyInformation[0].scaletext;
+      
+      console.log(xyInformation, nodeIndex, scaleText)
+      // check hash table. Add marker
+      if (!markerHashTable['nodeindex' + nodeIndex]) {
+        var nodeInfo = zingchart.exec('compara_dia_mes', 'getobjectinfo', {
+          object: 'node',
+          nodeindex: nodeIndex,
+          plotindex:0
+        });
+ 
+        var labelText = formatLabelText(nodeIndex, scaleText);
+        var labelId = 'label_' + nodeIndex;
+        // create a marker
+        var newMarker = new Marker(nodeIndex);
+        var newLabel = new Label(labelText, labelId, nodeInfo.x, nodeInfo.y);
+        
+        markerHashTable['nodeindex' + nodeIndex] = true;
+        markersArray.push(newMarker);
+        
+        labelsArray.push(newLabel);
+        
+        // render the marker
+        myConfig.scaleX.markers = markersArray;
+        myConfig.labels = labelsArray;
+        zingchart.exec('compara_dia_mes', 'setdata', {
+          data: myConfig
+        });
+      } else {
+        console.log('---marker already exists----')
+      }
+    }
+  }
+ 
+});
+ 
+
+ * Register a node_click event and then render a chart with the markers
+ 
+zingchart.bind('compara_dia_mes','node_click', function(e) {
+ 
+  // check hash table. Add marker
+  if (!markerHashTable['nodeindex' + e.nodeindex]) {
+    var labelText = formatLabelText(e.nodeindex, e.scaletext);
+    var labelId = 'label_' + e.nodeindex;
+    // create a marker
+    var newMarker = new Marker(e.nodeindex, labelText, e.plotindex);
+    var newLabel = new Label(labelText, labelId, e.ev.layerX, e.ev.layerY);
+    
+    markerHashTable['nodeindex' + e.nodeindex] = true;
+    markersArray.push(newMarker);
+    
+    labelsArray.push(newLabel);
+    
+    // render the marker
+    myConfig.scaleX.markers = markersArray;
+    myConfig.labels = labelsArray;
+    zingchart.exec('compara_dia_mes', 'setdata', {
+      data: myConfig
+    });
+  } else {
+    console.log('---marker already exists----')
+  }
+});
+ 
+var labelMouseDown = false;
+var labelId = null;
+var previousYPosition = null;
+
+ * bind mousedown event for dragging label
+ 
+zingchart.bind('compara_dia_mes', 'label_mousedown', function(e) {
+  labelMouseDown = true;
+  labelId = e.labelid;
+  zingchart.exec('compara_dia_mes', 'hideguide');
+});
+ 
+zingchart.bind('compara_dia_mes', 'mousemove', function(e) {
+  if (labelMouseDown && labelId) {
+    zingchart.exec('compara_dia_mes', 'updateobject', {
+        type : 'label',
+        data : {
+            id : labelId,
+            offsetY: e.ev.layerY
+        }
+    });
+  }
+});
+ 
+zingchart.bind('compara_dia_mes', 'mouseup', function(e) {
+  labelMouseDown = false;
+  labelId = null;
+  zingchart.exec('compara_dia_mes', 'showguide');
+});
+ 
+zingchart.bind('compara_dia_mes', 'doubleclick', function(e) {
+  console.log(e)
+});
+	
+
+}*/
+
+/* função que consome json e cria o grafico de pesquisa de satisfação*/
+/*function jsonSatisfacao(){
+	var ano_s=new Object([]);
+	var mes_s=new Object([]);
+	var atendimento=new Object([]);
+	var total_pesquisa=new Object([]);
+	var perc_pesquisa=new Object([]);
+	var total=new Object([]);
+	 $.ajax({
+		url:"pages/scripts_index/painel_satisfacao.php",
+		type:"post",
+		dataType:"json",
+		
+		beforeSend:function(retorno){
+			$('#pesquisaSatisfacao').html("<h3 class='text-center'><img src='dist/img/load_spinner.gif' width='40' heigth='40'/></h3>");
+		},	
+		success:function(retorno){
+			//console.log(retorno)
+			for(i=0 ; i<retorno.length;i++){
+			  ano_s.push(retorno[i].ano);
+			  mes_s.push(retorno[i].mes);
+			  atendimento.push(retorno[i].nosso_atendimento);
+			  total_pesquisa.push(parseInt(retorno[i].total_pesquisa));
+			  perc_pesquisa.push(parseFloat(retorno[i].perc_pesquisa));
+			  total.push(parseInt(retorno[i].total));
+			} 
+			$('#pesquisaSatisfacao').html('<div id="graficoPesquisa" ></div>');
+			
+			
+		},
+		complete:function(retorno){
+			//$('#pesquisaSatisfacao').html('<div id="graficoPesquisa" style="width: 100%;"></div>')
+			graficoPesquisaSatisfacao(perc_pesquisa,total)
+		},
+		error:function(retorno){
+			$('#pesquisaSatisfacao').html(retorno);
+			console.log(retorno)
+		}
+	}) 
+}*/
+
+/* Grafico pesquisa de satisfação*/
+// function graficoPesquisaSatisfacao(perc_pesquisa,total){
+// var myConfig =         {
+//             "type":"hbar",
+//             "font-family":"Arial",
+//             "title":{
+//                 "text":"Total pesquisa "+total[0],
+//                 "font-family":"Arial",
+//                 "background-color":"none",
+//                 "font-color":"#A4A4A4",
+//                 "font-size":"18px"
+//             },
+//             "labels":[
+//                 {
+//                     "text":"	",
+//                     "font-size":"12px",
+//                     "font-color":"#9d9d9d",
+//                     "x":"11.5%",
+//                     "y":"10%"
+//                 },
+//                 {
+//                     "text":"Indice%",
+//                     "font-size":"12px",
+//                     "font-color":"#9d9d9d",
+//                     "x":"20%",
+//                     "y":"10%"
+//                 },
+//                 {
+//                     "text":"Satisfação",
+//                     "font-size":"12px",
+//                     "font-color":"#9d9d9d",
+//                     "x":"4%",
+//                     "y":"10%"
+//                 }
+//             ],
+//             "arrows":[
+//               {
+//                 "backgroundColor":"#CCCCCC",
+//                 "direction":"bottom",
+//                 "borderWidth": 0,
+//                 "to":{
+//                   "x": "6%",
+//                   "y": "27%"
+//                 },
+//                 "from":{
+//                   "x": "6%",
+//                   "y": "79%"
+//                 }
+//               }
+//             ],
+//             "shapes":[
+//               {
+//                 "type":"circle",
+//                 "x": 45,
+//                 "y": 99,
+//                 "backgroundColor": "white",
+//                 "borderColor":"#6FA6DF",
+//                 "borderWidth":3,
+//                 "size": 14
+//               },
+//               {
+//                 "type":"circle",
+//                 "x": 40,
+//                 "y": 95,
+//                 "backgroundColor": "#6FA6DF",
+//                 "size": 2
+//               },
+//                {
+//                 "type":"circle",
+//                 "x": 50,
+//                 "y": 95,
+//                 "backgroundColor": "#6FA6DF",
+//                 "size": 2
+//               },
+//               {
+//                 "type":"pie",
+//                 "background-color":"#5297b6",
+//                 "size":8,
+//                 "x":45,
+//                 "y":100,
+//                 "angle-start":0,
+//                 "angle-end":180,
+//               },
+//               {
+//                 "type":"pie",
+//                 "background-color":"#fff",
+//                 "size":6,
+//                 "x":45,
+//                 "y":100,
+//                 "angle-start":0,
+//                 "angle-end":180,
+//               },
+//               {
+//                 "type":"circle",
+//                 "x": 45,
+//                 "y": 433,
+//                 "backgroundColor": "white",
+//                 "borderColor":"#FA8452",
+//                 "borderWidth":3,
+//                 "size": 14
+//               },
+//               {
+//                 "type":"circle",
+//                 "x": 40,
+//                 "y": 429,
+//                 "backgroundColor": "#FA8452",
+//                 "size": 2
+//               },
+//                {
+//                 "type":"circle",
+//                 "x": 50,
+//                 "y": 429,
+//                 "backgroundColor": "#FA8452",
+//                 "size": 2
+//               },
+//               {
+//                 "type":"pie",
+//                 "background-color":"#FA8452",
+//                 "size":8,
+//                 "x":45,
+//                 "y":439,
+//                 "angle-start":170,
+//                 "angle-end":10,
+//               },
+//               {
+//                 "type":"pie",
+//                 "background-color":"#fff",
+//                 "size":5,
+//                 "x":45,
+//                 "y":440,
+//                 "angle-start":170,
+//                 "angle-end":10,
+//               }
+//               ],
+//             "plot":{
+//                 "bars-overlap":"100%",
+//                 "borderRadius":8,
+//                 "hover-state":{
+//                     "visible":false
+//                 },
+//                 "animation": {
+//                     "delay": 300,
+//                     "effect": 3,
+//                     "speed": "500",
+//                     "method": "0",
+//                     "sequence": "3"
+//                 }
+//             },
+//             "plotarea":{
+//                 "margin":"60px 20px 20px 140px"
+//             },
+//             "scale-x":{
+//                 "line-color":"none",
+//                 "values":["Péssimo","Ruim","Regular","Bom","Ótimo"],
+//                 "tick":{
+//                     "visible":false
+//                 },
+//                 "guide":{
+//                     "visible":false
+//                 },
+//                 "item":{
+//                     "font-size":"14px",
+//                     "padding-right":"20px",
+//                     "auto-align":true,
+//                     "rules":[
+//                         {
+//                             "rule":"%i==0",
+//                             "font-color":"#FA8452"
+//                         },
+//                         {
+//                             "rule":"%i==1",
+//                             "font-color":"#FCAE48"
+//                         },
+//                         {
+//                             "rule":"%i==2",
+//                             "font-color":"#FCCC65"
+//                         },
+//                         {
+//                             "rule":"%i==3",
+//                             "font-color":"#A0BE4A"
+//                         },
+//                         {
+//                             "rule":"%i==4",
+//                             "font-color":"#6FA6DF"
+//                         }
+//                     ]
+//                 }
+//             },
+//             "scale-y":{
+//                 "visible":false,
+//                 "guide":{
+//                     "visible":false
+//                 }
+//             },
+//             "series":[
+//                 {
+//                     "values":[100,100,100,100,100],
+//                     "bar-width":"40px",
+//                     "background-color":"#f2f2f2",
+//                     "border-color": "#e8e3e3",
+//                     "border-width":2,
+//                     "fill-angle":90,
+//                     "tooltip":{
+//                         "visible":false
+//                     }
+//                 },
+//                 {
+//                     "values":perc_pesquisa,
+//                     "bar-width":"32px",
+//                     "max-trackers":0,
+//                     "value-box":{
+//                         "placement":"top-out",
+//                         "text":"%v%",
+//                         "float":0.0,
+//                         "font-color":"#A4A4A4",
+//                         "font-size":"14px",
+//                         "alpha":0.6
+//                     },
+//                     "rules":[
+//                         {
+//                             "rule":"%i==0",
+//                             "background-color":"#FA8452"
+//                         },
+//                         {
+//                             "rule":"%i==1",
+//                             "background-color":"#FCAE48"
+//                         },
+//                         {
+//                             "rule":"%i==2",
+//                             "background-color":"#FCCC65"
+//                         },
+//                         {
+//                             "rule":"%i==3",
+//                             "background-color":"#A0BE4A"
+//                         },
+//                         {
+//                             "rule":"%i==4",
+//                             "background-color":"#6FA6DF"
+//                         }
+//                     ]
+//                 }
+//             ]
+//         };
+ 
+// zingchart.render({ 
+// 	id : 'graficoPesquisa', 
+// 	data : myConfig,
+	
+// });
+
+// }
+
+
+
+
+/*setInterval(function(){
+	painel_principal(); 
+	json()
+	json_dia()
+	//jsonSatisfacao()
+	},500000);*/
+	
+
+			
+/*$(document).ready(function(){
+		painel_principal();
+		json()
+		json_dia();
+		jsonSatisfacao()
+		//graficoZingDiario()
+$("#reload").click(function(){
+			painel_principal();
+			json()
+			json_dia();
+			//jsonSatisfacao()
+			//graficoZingDiario()
+})*/
+	
+
+
+
+//console.log(dados)
+
+
+
+
+
+/*
+ * Author: Abdullah A Almsaeed
+ * Date: 4 Jan 2014
+ * Description:
+ *      This is a demo file used only for the main dashboard (index.html)
+ **
+
+$(function () {
+
+  
+
+  // Make the dashboard widgets sortable Using jquery UI
+  $('.connectedSortable').sortable({
+    placeholder         : 'sort-highlight',
+    connectWith         : '.connectedSortable',
+    handle              : '.box-header, .nav-tabs',
+    forcePlaceholderSize: true,
+    zIndex              : 999999
+  });
+  $('.connectedSortable .box-header, .connectedSortable .nav-tabs-custom').css('cursor', 'move');
+
+  // jQuery UI sortable for the todo list
+  $('.todo-list').sortable({
+    placeholder         : 'sort-highlight',
+    handle              : '.handle',
+    forcePlaceholderSize: true,
+    zIndex              : 999999
+  });
+
+  // bootstrap WYSIHTML5 - text editor
+  $('.textarea').wysihtml5();
+
+  $('.daterange').daterangepicker({
+    ranges   : {
+      'Today'       : [moment(), moment()],
+      'Yesterday'   : [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+      'Last 7 Days' : [moment().subtract(6, 'days'), moment()],
+      'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+      'This Month'  : [moment().startOf('month'), moment().endOf('month')],
+      'Last Month'  : [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+    },
+    startDate: moment().subtract(29, 'days'),
+    endDate  : moment()
+  }, function (start, end) {
+    window.alert('You chose: ' + start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+  });
+
+  /* jQueryKnob 
+  $('.knob').knob();
+
+  // jvectormap data
+  var visitorsData = {
+    US: 398, // USA
+    SA: 400, // Saudi Arabia
+    CA: 1000, // Canada
+    DE: 500, // Germany
+    FR: 760, // France
+    CN: 300, // China
+    AU: 700, // Australia
+    BR: 600, // Brazil
+    IN: 800, // India
+    GB: 320, // Great Britain
+    RU: 3000, // Russia
+	BR: 133000 // Brazil
+  };
+  // World map by jvectormap
+  $('#world-map').vectorMap({
+    map              : 'world_mill_en',
+    backgroundColor  : 'transparent',
+    regionStyle      : {
+      initial: {
+        fill            : '#e4e4e4',
+        'fill-opacity'  : 1,
+        stroke          : 'none',
+        'stroke-width'  : 0,
+        'stroke-opacity': 1
+      }
+    },
+    series           : {
+      regions: [
+        {
+          values           : visitorsData,
+          scale            : ['#92c1dc', '#ebf4f9'],
+          normalizeFunction: 'polynomial'
+        }
+      ]
+    },
+    onRegionLabelShow: function (e, el, code) {
+      if (typeof visitorsData[code] != 'undefined')
+        el.html(el.html() + ': ' + visitorsData[code] + ' new visitors');
+    }
+  });
+
+  // Sparkline charts
+  var myvalues = [1000, 1200, 920, 927, 931, 1027, 819, 930, 1021];
+  $('#sparkline-1').sparkline(myvalues, {
+    type     : 'line',
+    lineColor: '#92c1dc',
+    fillColor: '#ebf4f9',
+    height   : '50',
+    width    : '80'
+  });
+  myvalues = [515, 519, 520, 522, 652, 810, 370, 627, 319, 630, 921];
+  $('#sparkline-2').sparkline(myvalues, {
+    type     : 'line',
+    lineColor: '#92c1dc',
+    fillColor: '#ebf4f9',
+    height   : '50',
+    width    : '80'
+  });
+  myvalues = [15, 19, 20, 22, 33, 27, 31, 27, 19, 30, 21];
+  $('#sparkline-3').sparkline(myvalues, {
+    type     : 'line',
+    lineColor: '#92c1dc',
+    fillColor: '#ebf4f9',
+    height   : '50',
+    width    : '80'
+  });
+
+  // The Calender
+  $('#calendar').datepicker();
+
+  // SLIMSCROLL FOR CHAT WIDGET
+  $('#chat-box').slimScroll({
+    height: '250px'
+  });
+
+  /* Morris.js Charts */
+  // Sales chart
+/*   var area = new Morris.Area({
+    element   : 'compara_mes',
+    resize    : true,
+    data      : [
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+   { y: '2019',x:'2018', item1: 19086, item2: 26379 },
+    ],
+    xkey      : ['x'],
+    ykeys     : ['y','x','item1', 'item2'],
+    labels    : ['Item 1', 'Item 2'],
+    lineColors: ['#a0d0e0', '#3c8dbc'],
+    hideHover : 'auto'
+  }); */
+ /*  var line = new Morris.Line({
+    element          : 'line-chart',
+    resize           : true,
+    data             : [
+      { y: '2010 Q1', item1: 2666 },
+      { y: '2010 Q2', item1: 2778 },
+      { y: '2010 Q3', item1: 4912 },
+      { y: '2010 Q4', item1: 3767 },
+      { y: '2012 Q1', item1: 6810 },
+      { y: '2012 Q2', item1: 5670 },
+      { y: '2012 Q3', item1: 4820 },
+      { y: '2012 Q4', item1: 15073 },
+      { y: '2013 Q1', item1: 10687 },
+      { y: '2013 Q2', item1: 8432 },
+    ],
+    xkey             : 'y',
+    ykeys            : ['item1'],
+    labels           : ['Item 1'],
+    lineColors       : ['#efefef'],
+    lineWidth        : 2,
+    hideHover        : 'auto',
+    gridTextColor    : '#fff',
+    gridStrokeWidth  : 0.4,
+    pointSize        : 4,
+    pointStrokeColors: ['#efefef'],
+    gridLineColor    : '#efefef',
+    gridTextFamily   : 'Open Sans',
+    gridTextSize     : 10
+  }); */
+
+  // Donut Chart
+/*   var donut = new Morris.Donut({
+    element  : 'sales-chart',
+    resize   : true,
+    colors   : ['#3c8dbc', '#f56954', '#00a65a'],
+    data     : [
+      { label: 'Download Sales', value: 90 },
+      { label: 'In-Store Sales', value: 5 },
+      { label: 'Mail-Order Sales', value: 5 }
+    ],
+    hideHover: 'auto'
+  }); 
+
+  // Fix for charts under tabs
+  $('.box ul.nav a').on('shown.bs.tab', function () {
+    area.redraw();
+    donut.redraw();
+    line.redraw();
+  });
+
+  /* The todo list plugin 
+  $('.todo-list').todoList({
+    onCheck  : function () {
+      window.console.log($(this), 'The element has been checked');
+    },
+    onUnCheck: function () {
+      window.console.log($(this), 'The element has been unchecked');
+    }
+  });
+
+});
+
+
+	
+})*/
+	
+
+// Função timout desloga cliente em 33 minutos 	
+var contador=0;
+let limit=1500;
+
+
+function logoutTimer(){
+  $.post("pages/scripts_login/controle_logout.php",function(retorno){})
+  //location.href='login.php';
+
+  clearInterval(validaAtividade(limit))
+}
+
+function validaAtividade(limit){
+  var i=0
+  setInterval(function(){
+    $.post("pages/scripts_login/controle_login.php",function(retorno){})
+
+    //console.log(i+=1)
+   },5000)
+
+}
+
+  validaAtividade(limit)
+
+  //validaAtividade()
+  
+function pegaMouse(contador,limit){
+	//console.log(contador);
+	//console.log(limit);
+	$(window).mousemove(function(event){
+		  limit=1500
+			//console.log(limit);
+	})
+	setInterval(function(){
+		limit-=1;
+  	    //console.log(limit);
+		if(limit==0){
+				swal("Timeout!", "Tempo limite de inatividade ultrapassado!", "warning")
+				.then((value) => {
+          location.href='login.php';
+        });
+        logoutTimer()
+    }
+    
+	},1000);	
+}
+pegaMouse(contador,limit)
+
+function carregaLogin(){
+	
+	$.ajax({
+				url:"pages/scripts_login/jsonLogin.php",
+				type:"POST",
+				dataType:"JSON",
+				success:function(data)
+					{
+						//console.log(data)
+					},
+				error:function(data){
+					console.log(data)
+					
+				}	
+			})
+}
+  carregaLogin()
+  
+  function incluirStaff(matricula,nome){
+     var iniMatricula=matricula.substring(0,1);
+
+      if($('#matricula').val()==''){
+        swal("Atenção!", "Preencha campo matricula ", "warning")
+        $('#matricula').focus()
+      }else if($('#nome').val()==''){
+        swal("Atenção!", "Preencha campo nome ", "warning")
+        $('#nome').focus()
+      }else if(matricula.length!=8){
+        swal("Atenção!", "Cadastre sua matricula sem o digito!", "warning")
+        $('#matricula').focus()
+      }else if(iniMatricula!='F'){
+        swal("Atenção!", "Cadastre a matricula com 'F' ", "warning")
+        $('#matricula').focus()
+      }else{
+
+        $.ajax({
+              url:"pages/scripts_login/incluirStaff.php",
+              type:"POST",
+              dataType:"HTML",
+              data:{'matricula':matricula,'nome':nome},
+              success:function(retorno){
+                  console.log(retorno)
+
+                  switch(retorno){
+                    case '1':
+                        swal("Sucesso!", "Usuário alterado com sucesso!", "success")   ;
+                        break;
+                    case '0':   
+                        swal("Sucesso!", "Usuário cadastrado com sucesso!", "success")   ;
+                        break; 
+                    default:
+                        swal("Sucesso!", "Cadastrado com sucesso!", "success")   ;
+                        break;
+                  }
+
+                    carregaListaUsuario('')
+              },
+              complete:function(){
+               
+                $('#matricula').val('')
+                $('#nome').val('')
+              },
+              error:function(retorno){
+                console.log(retorno)
+                swal("Falha!", "Falha no processo de inclusão "+retorno , "error")
+            }
+        })
+      }
+  }
+
+  function listaUsuario(dados){
+      let tabela=(
+       '<table class="table table-bordered table-responsive table-striped">'
+         +'<thead class="text-center">'
+            +'<tr>'
+              +'<th>Ação</th>'
+              +'<th>Matricula</th>'
+              +'<th>Nome</th>'
+            +'</tr>'
+         +'</thead>'
+         +'<tbody id="listaUser">'
+         +'</tbody>'
+      +'</table>'
+      );
+     return $('#listaUsuarios').append(tabela);
+  }
+
+  function carregaListaUsuario(filtro){
+    let bodyLista=[];
+    $.post("pages/scripts_login/jsonListaUsuario.php",function(result){
+      //console.log(JSON.parse(result));  
+      $.each(JSON.parse(result),function(i,v){
+        bodyLista.push(
+           '<tr>'
+              +'<td class="text-center"><span id="exclui" data-id="'+v.id+'"><i class="fas fa-trash-alt btn btn-sm btn-danger"></i></span></td>'
+              +'<td>'+v.matricula+'</td>'
+              +'<td>'+v.colaborador+'</td>'
+          +'</tr>'
+        );
+      })
+        $('#listaUser').html(bodyLista)
+
+        $('span[id=exclui]').click(function(){
+          excluiUser($(this).attr('data-id'))
+        })
+      }) 
+  }
+
+  function excluiUser(id){
+    this.id=id
+    Swal.fire({
+      title: 'Tem certeza?',
+      text: "Você não poderá reverter isso!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sim, excluir'
+    }).then((result) => {
+      if (result.value) {
+        Swal.fire(
+          'Excluido!',
+          'Usuário excluido com sucesso!.',
+          'success'
+        )
+          $.ajax({
+            url:"pages/scripts_login/excluirStaff.php",
+            type:"POST",
+            dataType:"HTML",
+            data:{'id':id},
+            async:true,
+            beforeSend:function(retorno){
+              console.log(retorno)
+            },
+            success:function(retorno){
+              console.log(retorno)
+              carregaListaUsuario('')
+            },
+            error:function(retorno){
+              console.log(retorno)
+            }
+          })
+        }
+    })
+  }
+  listaUsuario('')
+  carregaListaUsuario('')
